@@ -1,5 +1,8 @@
 package com.learning.concurrency;
 
+import com.learning.model.User;
+import com.learning.service.CreditService;
+import com.learning.service.UserService;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -144,7 +147,6 @@ public class CompletableFutureTest {
     @Test
     public void testGivenCompletableFuture_WhenTaskComplete_ThenUseTheResultAndDoNotReturnAnyResult()
             throws ExecutionException, InterruptedException {
-
         CompletableFuture<Void> completableFuture = CompletableFuture.supplyAsync(() -> {
             simulateLongRunningJob();
 
@@ -163,7 +165,6 @@ public class CompletableFutureTest {
     @Test
     public void testGivenCompletableFuture_WhenTaskComplete_ThenAnotherSeparateTask()
             throws ExecutionException, InterruptedException {
-
         CompletableFuture<Void> completableFuture = CompletableFuture.supplyAsync(() -> {
             simulateLongRunningJob();
 
@@ -173,6 +174,35 @@ public class CompletableFutureTest {
 
         // Block and wait for the future to complete
         completableFuture.get();
+    }
+
+    /**
+     * thenCompose(Function<? super T, ? extends CompletionStage<U>>) - callback function that returns a
+     * CompletableFuture and flattened result from the CompletableFuture chain. All CompletableFutures will be executed
+     * consequently.
+     */
+    @Test
+    public void testGivenTwoServiceThatReturnCompletableFuture_WhenOneServiceHasToUseResultFromAnother_ThenTheyHaveToBeComposed()
+            throws ExecutionException, InterruptedException {
+        CompletableFuture<Double> completableFuture =
+                UserService.getUserDetails(1L)
+                        .thenCompose(CreditService::getUserCreditRating);
+
+        assertThat(completableFuture.get()).isEqualTo(100.0);
+    }
+
+    /**
+     * thenCombine(CompletionStage<? extends U>, BiFunction<? super T,? super U,? extends V>) - callback function that
+     * to run two Futures independently (at the same time) and do something after both are complete.
+     */
+    @Test
+    public void testGivenTwoServiceThatReturnCompletableFuture_WhenNeedToCalculateMutualResult_ThenTheyHaveToBeCombined()
+            throws ExecutionException, InterruptedException {
+        CompletableFuture<Double> completableFuture =
+                UserService.getUserDetails(1L)
+                        .thenCombine(CreditService.getInterestRate(), (user, rate) -> user.getMoney() * rate);
+
+        assertThat(completableFuture.get()).isEqualTo(10000.00 * 13.0);
     }
 
     private void simulateLongRunningJob() {
