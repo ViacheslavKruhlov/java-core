@@ -3,6 +3,7 @@ package com.learning.concurrency;
 import com.learning.model.User;
 import com.learning.service.CreditService;
 import com.learning.service.UserService;
+import com.learning.util.ThreadUtils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -56,7 +57,7 @@ public class CompletableFutureTest {
     public void testGivenCompletableFuture_WhenCallRunAsyncMethod_ThenTaskCompletedButNothingReturn()
             throws ExecutionException, InterruptedException {
         CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             System.out.println(Thread.currentThread().getName());
         });
@@ -75,7 +76,7 @@ public class CompletableFutureTest {
         String expectedResult = "The task execution result";
 
         CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             return expectedResult;
         });
@@ -96,7 +97,7 @@ public class CompletableFutureTest {
         final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
         CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             return expectedResult;
         }, executorService);
@@ -122,7 +123,7 @@ public class CompletableFutureTest {
         CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
             System.out.println(Thread.currentThread().getName());
 
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             return customAge;
         })
@@ -151,7 +152,7 @@ public class CompletableFutureTest {
     public void testGivenCompletableFuture_WhenTaskComplete_ThenUseTheResultAndDoNotReturnAnyResult()
             throws ExecutionException, InterruptedException {
         CompletableFuture<Void> completableFuture = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             return 18;
         })
@@ -169,7 +170,7 @@ public class CompletableFutureTest {
     public void testGivenCompletableFuture_WhenTaskComplete_ThenAnotherSeparateTask()
             throws ExecutionException, InterruptedException {
         CompletableFuture<Void> completableFuture = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(2);
+            ThreadUtils.simulateLongRunningJob(2);
 
             return 18;
         })
@@ -209,9 +210,9 @@ public class CompletableFutureTest {
     }
 
     /**
-     * allOf() - a static method that used in scenarios when you have a List of independent futures that you want to run
-     * in parallel and do something after all of them are complete. Pay attention with CompletableFuture.allOf() is that
-     * it returns CompletableFuture<Void>, but it's not a problem - see following code.
+     * allOf() - a static callback function that used in scenarios when you have a List of independent futures that you
+     * want to run in parallel and do something after all of them are complete. Pay attention with
+     * CompletableFuture.allOf() is that it returns CompletableFuture<Void>, but it's not a problem - see following code.
      */
     @Test
     public void testGivenListOfCompletableFutures_WhenCallAllOfMethod_ThenContinueAfterAllFeaturesComplete()
@@ -233,14 +234,14 @@ public class CompletableFutureTest {
     }
 
     /**
-     * anyOf() - a static method that returns a new CompletableFuture which is completed when any of the given
-     * CompletableFutures complete, with the same result.
+     * anyOf() - a static callback function that returns a new CompletableFuture which is completed when any of the
+     * given CompletableFutures complete, with the same result.
      */
     @Test
     public void testGivenListOfCompletableFutures_WhenCallAnyOfMethod_ThenContinueAfterOneOfFeaturesComplete()
             throws ExecutionException, InterruptedException {
         CompletableFuture<String> future1 = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(3);
+            ThreadUtils.simulateLongRunningJob(3);
 
             return "Result 1";
         });
@@ -248,13 +249,13 @@ public class CompletableFutureTest {
         final String expectedResult = "Result 2";
 
         CompletableFuture<String> future2 = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(1);
+            ThreadUtils.simulateLongRunningJob(1);
 
             return expectedResult;
         });
 
         CompletableFuture<String> future3 = CompletableFuture.supplyAsync(() -> {
-            simulateLongRunningJob(3);
+            ThreadUtils.simulateLongRunningJob(3);
 
             return "Result 3";
         });
@@ -263,12 +264,83 @@ public class CompletableFutureTest {
 
         assertThat(anyOfFuture.get()).isEqualTo(expectedResult);
     }
-    
-    private void simulateLongRunningJob(int timeout) {
-        try {
-            TimeUnit.SECONDS.sleep(timeout);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+
+    /**
+     * exceptionally() - the callback function that gives an opportunity to recover from errors generated from the
+     * original Future. The exception can be logged here and return a default value. Note that, the error will not be
+     * propagated further in the callback chain if you handle it once. Executed only if exception occurs.
+     * Pay attention, that if a chain of callback methods following exceptionally() they will be executed.
+     */
+    @Test
+    public void testGivenCompletableFuture_WhenExceptionOccurs_ThenNoneOfMethodChainWillExecutedExceptExceptionallyMethod()
+            throws ExecutionException, InterruptedException {
+        assertThat(testExceptionally(-1)).isEqualTo("java.lang.IllegalArgumentException: Exception from supplyAsync()");
+
+        assertThat(testExceptionally(10))
+                .isEqualTo("java.lang.IllegalArgumentException: Exception from first thenApply()");
+    }
+
+    private String testExceptionally(int age) throws ExecutionException, InterruptedException {
+        CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
+            System.out.println("supplyAsync() execution.");
+
+            if (age < 0) {
+                throw new IllegalArgumentException("Exception from supplyAsync()");
+            }
+
+            return -1;
+        }).thenApply(num -> {
+            System.out.println("First thenApply() execution.");
+
+            if (num < 0) {
+                throw new IllegalArgumentException("Exception from first thenApply()");
+            }
+
+            return -1;
+        }).thenApply(num -> "Never will be here")
+                .exceptionally(Throwable::getMessage);
+
+        return completableFuture.get();
+    }
+
+    /**
+     * handle() - generic callback method to recover from exceptions. It is called whether or not an exception occurs.
+     * If an exception occurs, then the `result` argument will be null, otherwise, the `ex` argument will be null.
+     */
+    @Test
+    public void testGivenCompletableFuture_WhenExceptionOccurs_ThenNoneOfMethodChainWillExecutedExceptHandleMethod()
+            throws ExecutionException, InterruptedException {
+        assertThat(testHandle(-1)).isEqualTo("java.lang.IllegalArgumentException: Exception from supplyAsync()");
+
+        assertThat(testHandle(5)).isEqualTo("java.lang.IllegalArgumentException: Exception from first thenApply()");
+    }
+
+    private String testHandle(int age) throws ExecutionException, InterruptedException {
+        CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
+            System.out.println("supplyAsync() execution.");
+
+            if (age < 0) {
+                throw new IllegalArgumentException("Exception from supplyAsync()");
+            }
+
+            return -1;
+        }).thenApply(num -> {
+            System.out.println("First thenApply() execution.");
+
+            if (num < 0) {
+                throw new IllegalArgumentException("Exception from first thenApply()");
+            }
+
+            return -1;
+        }).thenApply(num -> "Never will be here")
+                .handle((result, ex) -> {
+                    if (ex != null) {
+                        return ex.getMessage();
+                    }
+
+                    return result;
+                });
+
+        return completableFuture.get();
     }
 }

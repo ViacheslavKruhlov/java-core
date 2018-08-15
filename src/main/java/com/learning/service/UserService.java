@@ -1,8 +1,8 @@
 package com.learning.service;
 
 import com.learning.model.User;
+import com.learning.util.ThreadUtils;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class UserService {
 
@@ -10,11 +10,7 @@ public class UserService {
         return CompletableFuture.supplyAsync(() -> {
             System.out.println("UserService.getUserDetails() execution");
 
-            try {
-                TimeUnit.SECONDS.sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            ThreadUtils.simulateLongRunningJob(3);
 
             return getUser(userId);
         });

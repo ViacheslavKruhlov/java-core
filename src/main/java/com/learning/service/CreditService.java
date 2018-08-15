@@ -1,8 +1,8 @@
 package com.learning.service;
 
 import com.learning.model.User;
+import com.learning.util.ThreadUtils;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class CreditService {
 
@@ -10,7 +10,7 @@ public class CreditService {
         return CompletableFuture.supplyAsync(() -> {
             System.out.println("CreditService.getUserCreditRating() execution");
 
-            simulateLongRunningJob();
+            ThreadUtils.simulateLongRunningJob(3);
 
             return getCreditRating(user);
         });
@@ -20,7 +20,7 @@ public class CreditService {
         return CompletableFuture.supplyAsync(() -> {
             System.out.println("CreditService.getInterestRate() execution");
 
-            simulateLongRunningJob();
+            ThreadUtils.simulateLongRunningJob(3);
 
             return 13.0;
         });
@@ -28,13 +28,5 @@ public class CreditService {
 
     private static double getCreditRating(final User user) {
         return user.getCreditRating();
-    }
-
-    private static void simulateLongRunningJob() {
-        try {
-            TimeUnit.SECONDS.sleep(3);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 }
