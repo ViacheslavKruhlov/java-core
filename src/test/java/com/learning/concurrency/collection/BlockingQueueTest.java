@@ -54,7 +54,7 @@ public class BlockingQueueTest {
             }).start();
         }
 
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(3);
     }
 
     /**
